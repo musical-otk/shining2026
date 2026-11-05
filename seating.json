@@ -1,0 +1,60 @@
+{
+  "venue": "대학로 TOM(티오엠) 2관",
+  "totalSeats": 220,
+  "source": "공식 SEAT GUIDE 이미지 (x.com/newpro_shining/status/2118214238372348375, 3번째 이미지)",
+  "verification": "색 블록 연결요소 검출로 좌석을 세고, 사선 방향(B: x−y, D: x+y)으로 열을 묶은 뒤 3배 확대 이미지의 번호와 대조했다. 극장 공표 객석수와는 대조하지 못함 — 공식 계정 좌석도를 기준으로 삼는다.",
+  "_model": {
+    "floors": "층이 없다. floors 한 항목 = 구역(B/C/D). 구역마다 열·번호가 1부터 다시 시작한다",
+    "first/last": "통로 없는 한 줄",
+    "S": "S석 번호 구간 [첫, 끝]. 없으면 그 열 전부 R석",
+    "start": "그 열 1번 좌석의 칸 위치 — 앱 SEAT_GEOM 격자에서 쓴다 (C 는 왼쪽부터, B·D 는 사선을 따라 무대 쪽부터)",
+    "booking": "공식 좌석도 색은 예매처(티켓링크/예스24)도 나타내지만 앱에서는 쓰지 않는다 (사용자 결정)"
+  },
+  "floors": [
+    {
+      "name": "B구역",
+      "grade": "R석 49 · S석 15",
+      "seatCount": 64,
+      "layout": "무대 왼편, 왼쪽 위로 올라가는 45° 사선. 1열이 무대에 가장 가깝다",
+      "rows": [
+        { "row": "1", "first": 1, "last": 8,  "S": [7, 8],  "start": 1 },
+        { "row": "2", "first": 1, "last": 10, "S": [8, 10], "start": 0 },
+        { "row": "3", "first": 1, "last": 11, "S": [9, 11], "start": 0 },
+        { "row": "4", "first": 1, "last": 11, "S": [9, 11], "start": 0 },
+        { "row": "5", "first": 1, "last": 10, "S": [8, 10], "start": 0 },
+        { "row": "6", "first": 1, "last": 8,  "S": [8, 8],  "start": 1 },
+        { "row": "7", "first": 1, "last": 6,                "start": 2 }
+      ]
+    },
+    {
+      "name": "C구역",
+      "grade": "R석 101",
+      "seatCount": 101,
+      "layout": "무대 정면 가로줄. 1번이 왼쪽",
+      "rows": [
+        { "row": "1", "first": 1, "last": 14, "start": 3 },
+        { "row": "2", "first": 1, "last": 15, "start": 2 },
+        { "row": "3", "first": 1, "last": 16, "start": 2 },
+        { "row": "4", "first": 1, "last": 17, "start": 1 },
+        { "row": "5", "first": 1, "last": 18, "start": 1 },
+        { "row": "6", "first": 1, "last": 21, "start": 0 }
+      ]
+    },
+    {
+      "name": "D구역",
+      "grade": "R석 41 · S석 14",
+      "seatCount": 55,
+      "layout": "무대 오른편, 오른쪽 위로 올라가는 45° 사선. 1열이 무대에 가장 가깝다",
+      "rows": [
+        { "row": "1", "first": 1, "last": 8,  "S": [7, 8],  "start": 0 },
+        { "row": "2", "first": 1, "last": 9,  "S": [8, 9],  "start": 0 },
+        { "row": "3", "first": 1, "last": 10, "S": [8, 10], "start": 0 },
+        { "row": "4", "first": 1, "last": 10, "S": [8, 10], "start": 0 },
+        { "row": "5", "first": 1, "last": 9,  "S": [8, 9],  "start": 0 },
+        { "row": "6", "first": 1, "last": 9,  "S": [8, 9],  "start": 0 }
+      ]
+    }
+  ],
+  "grades": { "R석": 191, "S석": 29 },
+  "prices": { "R석": 66000, "S석": 44000 }
+}

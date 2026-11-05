@@ -1,0 +1,173 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SHOTS</title>
+<style>
+  html,body{margin:0;padding:0;background:#fff;}
+  iframe{width:430px;height:932px;border:0;display:block;}
+</style>
+</head>
+<body>
+<iframe id="app" src="./index.html"></iframe>
+<script>
+/*
+  guide.html 용 스크린샷 촬영 하네스 (개발 도구, 배포 대상 아님).
+    _shots.html?tab=home | calendar | coupon | stats
+  index.html 을 iframe 으로 띄우고 샘플 기록을 심은 뒤 해당 탭으로 전환한다.
+  headless Chrome --screenshot 으로 캡처한다.
+*/
+const Q = new URLSearchParams(location.search);
+const TAB = Q.get('tab') || 'home';
+const THEME = Q.get('theme');   // 다크모드 대비는 자동 검사가 못 잡는다 (pitfalls §14)
+
+// 실제 schedule.json 의 캐스팅과 일치시킨 샘플 관람 기록
+const SAMPLE = [
+  { date:'2026-12-16', time:'20:00', freud:'양지원', jung:'이한솔', shadow:'최호승',
+    seatFloor:'C구역', seatZone:'3', seatNumber:10, price:33000, discountType:'프리뷰 할인', rating:5,
+    comment:'첫공' },
+  { date:'2026-12-19', time:'14:00', freud:'최호승', jung:'이한솔', shadow:'김경록',
+    seatFloor:'B구역', seatZone:'2', seatNumber:4, price:33000, discountType:'프리뷰 할인', rating:5,
+    comment:'프리뷰 낮공' },
+  { date:'2026-12-23', time:'16:00', freud:'최호승', jung:'김서환', shadow:'양지원',
+    seatFloor:'D구역', seatZone:'3', seatNumber:9, price:30800, discountType:'마티네 할인', rating:4,
+    comment:'수요일 마티네 · S석 시야 확인' },
+  { date:'2026-12-25', time:'18:00', freud:'양지원', jung:'김경록', shadow:'최호승',
+    seatFloor:'C구역', seatZone:'1', seatNumber:7, price:66000, discountType:'정가', rating:5,
+    comment:'성탄절 공연' },
+  { date:'2026-12-27', time:'14:00', freud:'최호승', jung:'김서환', shadow:'유태율',
+    seatFloor:'C구역', seatZone:'3', seatNumber:10, price:49500, discountType:'재관람 할인', rating:5,
+    comment:'같은 자리 두 번째' }
+];
+
+function seed(W) {
+  // 기존 데이터 정리
+  Object.keys(W.localStorage)
+    .filter(k => k.startsWith('shining_') && !['shining_schedule','shining_events'].includes(k))
+    .forEach(k => W.localStorage.removeItem(k));
+
+  // 도장판 하나 만들고 앱 로직으로 도장을 찍어 카운트·마일스톤 정합성을 맞춘다
+  const board = { id: W.uuid(), name: '1', totalSlots: W.eval('DEFAULT_SLOTS'),
+                  milestones: W.defaultMilestones(), currentCount: 0, history: [] };
+  W.saveStampBoards([board]);
+
+  const now = new Date().toISOString();
+  const records = SAMPLE.map(s => Object.assign({
+    id: W.uuid(), isBooked: true, paidDiff: false, eungBingPassUsed: false,
+    doubleStampUsed: false, stampBoardId: board.id, stampQty: 1,
+    memo: '', createdAt: now, updatedAt: now
+  }, s));
+  W.saveRecords(records);
+
+  records.forEach(r => {
+    W.applyStampToBoard(board.id, 1, r.date, '관람 연동');
+    W.applyStampToBoard._lastOverflow = 0;
+    const bs = W.getStampBoards();
+    const b  = bs.find(x => x.id === board.id);
+    if (b?.history?.length) {
+      b.history[b.history.length - 1].recordId = r.id;
+      W.saveStampBoards(bs);
+    }
+  });
+}
+
+const frame = document.getElementById('app');
+if (Q.get('w')) frame.style.width = Q.get('w') + 'px';   // 좁은 기기 폭 확인용
+frame.addEventListener('load', () => {
+  const W = frame.contentWindow;
+  const start = Date.now();
+  (function wait() {
+    const ready = W.getSchedule && W.getSchedule().length > 0;
+    if (!ready && Date.now() - start < 6000) return setTimeout(wait, 150);
+
+    // ?empty=1 — 기록이 하나도 없는 첫 화면 (빈 상태 아이콘·문구 확인용)
+    if (Q.get('empty')) {
+      Object.keys(W.localStorage)
+        .filter(k => k.startsWith('shining_') && !['shining_schedule','shining_events'].includes(k))
+        .forEach(k => W.localStorage.removeItem(k));
+      W.refreshCurrentPage && W.refreshCurrentPage();
+    } else seed(W);
+    // ?vars=--bg:#111;--text:#eee — 팔레트 후보 비교용 (html 인라인 스타일이 테마 선택자보다 우선)
+    if (Q.get('vars')) {
+      Q.get('vars').split(';').filter(Boolean).forEach(kv => {
+        const i = kv.indexOf(':');
+        W.document.documentElement.style.setProperty(kv.slice(0, i), kv.slice(i + 1));
+      });
+      if (Q.get('card')) {
+        const st = W.document.createElement('style');
+        st.textContent = `.next-show-card{background:${Q.get('card')} !important;}`;
+        W.document.head.appendChild(st);
+      }
+    }
+    if (THEME) {
+      W.document.documentElement.setAttribute('data-theme', THEME);
+      document.documentElement.setAttribute('data-theme', THEME);
+    }
+
+    // 도장 이력 수정 패널 (관람 연동 도장 — 카드 칸 확인용)
+    if (TAB === 'stampedit') {
+      const bs = W.getStampBoards();
+      bs.push({ id: 'b2', name: '2', totalSlots: W.eval('DEFAULT_SLOTS'), milestones: W.defaultMilestones(), currentCount: 0, history: [] });
+      W.saveStampBoards(bs);
+      W.openStampHistory(bs[0].id); W.editStampHistoryItem(bs[0].id, 0);
+      document.title = 'SHOT stampedit'; return;
+    }
+    // 도장 카드 변경 모드 (이력 패널에서 2건 고른 상태)
+    if (TAB === 'stampmove') {
+      const bs = W.getStampBoards();
+      bs.push({ id: 'b2', name: '2', totalSlots: W.eval('DEFAULT_SLOTS'), milestones: W.defaultMilestones(), currentCount: 0, history: [] });
+      W.saveStampBoards(bs);
+      const ct = W.document.querySelector(`.tab-btn[onclick*="'coupon'"]`); if (ct) W.switchTab('coupon', ct);
+      W.openStampHistory(bs[0].id); W.toggleStampMoveMode();
+      const h = W.getStampBoards()[0].history;
+      W.toggleStampMoveSel(h.length - 1, true); W.toggleStampMoveSel(h.length - 2, true);
+      document.title = 'SHOT stampmove'; return;
+    }
+    // 새 도장판 패널 (혜택 안내 확인용)
+    if (TAB === 'newcard') { W.openAddStampBoard(); document.title = 'SHOT newcard'; return; }
+    // 기록 입력 폼 (배역 배치 확인용)
+    if (TAB === 'form') { W.openAddRecord('2026-12-19'); document.title = 'SHOT form'; return; }
+
+    // 상세 패널 (미니 좌석도 확인용)
+    if (TAB === 'detail') {
+      const home = W.document.querySelector(`.tab-btn[onclick*="'home'"]`);
+      if (home) W.switchTab('home', home);
+      const target = W.getRecords()[Number(Q.get('i') || 1)];   // 기본: B구역 사선 좌석
+      W.openDetail(target.id);
+      document.title = 'SHOT detail';
+      // ?measure=1 — 미니 좌석도 스크롤 여부 (scrollWidth/clientWidth) 를 제목에 남긴다
+      if (Q.get('measure')) setTimeout(() => {
+        const box = [...W.document.querySelectorAll('div')].find(d => d.style.overflowX === 'auto' && d.innerHTML.includes('flex-direction:column'));
+        document.title = box ? `MEASURE ${box.scrollWidth}/${box.clientWidth}` : 'MEASURE none';
+      }, 300);
+      return;
+    }
+
+    const btn = W.document.querySelector(`.tab-btn[onclick*="'${TAB}'"]`);
+    if (btn) W.switchTab(TAB, btn);
+
+    // 캘린더는 11월을 보여주고, 2회 공연인 날짜를 펼쳐 둔다
+    if (TAB === 'calendar') {
+      W.initCal(); W.renderCalendar(); W.calDayClick('2026-12-19');
+      // ?actor=최호승 — 배우 모드 필터. 여러 명은 쉼표
+      if (Q.get('actor')) { W.setCalMode('actor'); Q.get('actor').split(',').forEach(a => W.toggleCalActor(a)); }
+      // ?roles=open — 배역 모드로 바꾸고 배역 필터를 펼친 상태로 찍는다 (칩 정렬 확인용)
+      if (Q.get('roles') === 'open') {
+        W.setCalMode('role');
+        W.document.querySelectorAll('#cal-role-tabs .cal-role-tab').forEach(b => W.selectCalRole(b.dataset.role, b));
+      }
+    }
+    // ?sub=actors|pairs|money — 통계 하위 탭 (기본 히트맵)
+    if (TAB === 'stats') {
+      const sub = Q.get('sub') || 'heatmap';
+      W.switchStatTab(sub, W.document.querySelector(`.stats-subtab[onclick*="'${sub}'"]`) || W.document.querySelector('.stats-subtab'));
+      // ?pair=최호승|김서환 — 조합별 페어 칸을 누른 상태
+      if (sub === 'pairs' && Q.get('pair')) W.selectPairCell(Q.get('pair'));
+    }
+
+    document.title = 'SHOT ' + TAB;
+  })();
+});
+</script>
+</body>
+</html>

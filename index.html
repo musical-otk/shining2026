@@ -302,6 +302,11 @@
   .upcoming-dday{font-size:12px;font-weight:700;color:var(--accent);min-width:36px;white-space:nowrap;}
   .upcoming-date{font-size:12px;color:var(--text2);white-space:nowrap;}
   .upcoming-seat{font-size:11px;color:var(--text3);opacity:0.75;white-space:nowrap;}
+  /* 한 장 보고 한 장 양도한 회차 — 좌석·날짜 옆 배지 (캐스팅 옆에 두면 회차를 넘긴 것처럼 읽힌다) */
+  .split-badge{display:inline-block;font-size:10px;padding:1px 6px;border:1px solid var(--border);border-radius:999px;color:var(--text3);white-space:nowrap;flex-shrink:0;vertical-align:middle;}
+  .next-show-seat .split-badge{font-size:11px;border-color:rgba(255,255,255,0.5);color:#fff;margin-left:8px;}
+  .next-show-seat .split-badge:first-child{margin-left:0;}
+  .upcoming-item{flex-wrap:wrap;row-gap:4px;}   /* 좁으면 캐스팅이 다음 줄로 */
   .upcoming-cast{font-size:11px;color:var(--text3);white-space:nowrap;margin-left:auto;}
   .home-stamp-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
   .home-stamp-row:last-child{border-bottom:none;}
@@ -2533,8 +2538,12 @@ function renderHome() {
   // 목록에는 남긴다 — 누구에게 넘겼는지가 기억해야 할 내용이다.
   // 한 장 보고 한 장 양도한 회차는 한 번만 — 양도는 관람 기록 옆 꼬리표로 붙인다
   const sameSess = (a, b) => a.date === b.date && a.time === b.time;
-  const transTag = r => upcoming.filter(t => isTransferred(t) && sameSess(t, r))
-    .map(t => `↪ 양도${t.transferTo ? ' · ' + t.transferTo : ''}`).join(' ');
+  const splitBadge = r => {
+    if (isTransferred(r)) return '';
+    const ts = upcoming.filter(t => isTransferred(t) && sameSess(t, r));
+    const to = ts.map(t => t.transferTo).filter(Boolean).join(', ');
+    return ts.length ? `<span class="split-badge">+${ts.length}장 양도${to ? ' · ' + to : ''}</span>` : '';
+  };
   const nextShow = upcoming.find(isWatched);
   const rest     = upcoming.filter(r => r !== nextShow
     && !(isTransferred(r) && upcoming.some(w => isWatched(w) && sameSess(w, r))));
@@ -2552,8 +2561,7 @@ function renderHome() {
         <div class="next-show-dday${diff===0?' today-dday':''}">${dday}${nextShow.isBooked===false?` <span style="font-size:14px;opacity:0.7;font-weight:400;">미정</span>`:''}</div>
         <div class="next-show-date">${nextShow.date} (${dow[d.getDay()]}) ${nextShow.time}</div>
         <div class="next-show-casting">${castPills}</div>
-        ${seat ? `<div class="next-show-seat">${seat}</div>` : ''}
-        ${transTag(nextShow) ? `<div class="next-show-seat">${transTag(nextShow)}</div>` : ''}
+        ${(seat || splitBadge(nextShow)) ? `<div class="next-show-seat">${seat ? `<span>${seat}</span>` : ''}${splitBadge(nextShow)}</div>` : ''}
       </div>`;
   } else {
     nextEl.innerHTML = `<div class="card" style="text-align:center;color:var(--text3);padding:20px;"><div style="font-size:28px;margin-bottom:6px;">✨</div><div style="font-size:13px;">예매 확정된 일정이 없습니다</div></div>`;
@@ -2575,12 +2583,12 @@ function renderHome() {
       const tr = isTransferred(r);
       const trTail = tr
         ? ` <span style="font-size:10px;color:var(--text3);">↪ 양도${r.transferTo ? ' · ' + r.transferTo : ''}</span>`
-        : (r.isBooked===false ? ' <span style="font-size:10px;color:var(--text3);">미정</span>' : '')
-          + (transTag(r) ? ` <span style="font-size:10px;color:var(--text3);">${transTag(r)}</span>` : '');
+        : (r.isBooked===false ? ' <span style="font-size:10px;color:var(--text3);">미정</span>' : '');
       return `<div class="upcoming-item${tr ? ' transferred' : ''}" onclick="openDetail('${r.id}')">
         <div class="upcoming-dday" style="${(tr || r.isBooked===false)?'color:var(--text3);':''}">${dday2}</div>
         <div class="upcoming-date">${r.date.slice(5)} (${dow[d2.getDay()]}) ${r.time}</div>
         ${seat2 ? `<div class="upcoming-seat">${seat2}</div>` : ''}
+        ${splitBadge(r)}
         ${tr ? '' : upMsBadge}
         <div class="upcoming-cast">${castStr}${trTail}</div>
       </div>`;

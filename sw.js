@@ -1,4 +1,4 @@
-const CACHE_NAME = 'shining2026-v3';
+const CACHE_NAME = 'shining2026-v4';
 const BASE = '/shining2026';
 
 const PRECACHE_URLS = [

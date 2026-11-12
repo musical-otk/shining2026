@@ -2531,8 +2531,13 @@ function renderHome() {
 
   // 양도한 표는 내가 보러 가는 공연이 아니다. D-day 카드에서는 건너뛴다.
   // 목록에는 남긴다 — 누구에게 넘겼는지가 기억해야 할 내용이다.
+  // 한 장 보고 한 장 양도한 회차는 한 번만 — 양도는 관람 기록 옆 꼬리표로 붙인다
+  const sameSess = (a, b) => a.date === b.date && a.time === b.time;
+  const transTag = r => upcoming.filter(t => isTransferred(t) && sameSess(t, r))
+    .map(t => `↪ 양도${t.transferTo ? ' · ' + t.transferTo : ''}`).join(' ');
   const nextShow = upcoming.find(isWatched);
-  const rest     = upcoming.filter(r => r !== nextShow);
+  const rest     = upcoming.filter(r => r !== nextShow
+    && !(isTransferred(r) && upcoming.some(w => isWatched(w) && sameSess(w, r))));
 
   // ① D-day 카드
   const nextEl = document.getElementById('home-next-show');
@@ -2548,6 +2553,7 @@ function renderHome() {
         <div class="next-show-date">${nextShow.date} (${dow[d.getDay()]}) ${nextShow.time}</div>
         <div class="next-show-casting">${castPills}</div>
         ${seat ? `<div class="next-show-seat">${seat}</div>` : ''}
+        ${transTag(nextShow) ? `<div class="next-show-seat">${transTag(nextShow)}</div>` : ''}
       </div>`;
   } else {
     nextEl.innerHTML = `<div class="card" style="text-align:center;color:var(--text3);padding:20px;"><div style="font-size:28px;margin-bottom:6px;">✨</div><div style="font-size:13px;">예매 확정된 일정이 없습니다</div></div>`;
@@ -2569,7 +2575,8 @@ function renderHome() {
       const tr = isTransferred(r);
       const trTail = tr
         ? ` <span style="font-size:10px;color:var(--text3);">↪ 양도${r.transferTo ? ' · ' + r.transferTo : ''}</span>`
-        : (r.isBooked===false ? ' <span style="font-size:10px;color:var(--text3);">미정</span>' : '');
+        : (r.isBooked===false ? ' <span style="font-size:10px;color:var(--text3);">미정</span>' : '')
+          + (transTag(r) ? ` <span style="font-size:10px;color:var(--text3);">${transTag(r)}</span>` : '');
       return `<div class="upcoming-item${tr ? ' transferred' : ''}" onclick="openDetail('${r.id}')">
         <div class="upcoming-dday" style="${(tr || r.isBooked===false)?'color:var(--text3);':''}">${dday2}</div>
         <div class="upcoming-date">${r.date.slice(5)} (${dow[d2.getDay()]}) ${r.time}</div>
@@ -2885,7 +2892,7 @@ function renderCalendar() {
       if (ds === calSelectedDs) cls += ' selected';
       const sessionHtml = filtered.sort((a,b)=>a.time.localeCompare(b.time)).map(s => {
         const key = `${ds}-${s.time}`;
-        const isBooked = bookedSet.has(key), isDone = doneSet.has(key), isTrans = transSet.has(key);
+        const isBooked = bookedSet.has(key), isDone = doneSet.has(key), isTrans = transSet.has(key) && !doneSet.has(key);  // 한 장 양도·한 장 관람이면 관람으로
         const chipCls  = isTrans  ? 'cal-session-chip transferred'
                        : isBooked ? 'cal-session-chip booked'
                        : isDone   ? 'cal-session-chip done' : 'cal-session-chip';
@@ -2951,10 +2958,9 @@ function renderCalDayPanel(ds, daySch, doneSet, bookedSet, records) {
       const isBooked = bookedSet.has(key);
       const recs = dayRecords.filter(r => r.time === s.time);
       const trans = recs.find(isTransferred);
-      const badge = trans
-        ? `<span class="cal-session-badge transferred">↪ 양도${trans.transferTo ? ' · ' + trans.transferTo : ''}</span>`
-        : isBooked ? '<span class="cal-session-badge booked">✓ 확정</span>'
-        : isDone ? '<span class="cal-session-badge done">✅</span>' : '';
+      const transBadge = trans ? `<span class="cal-session-badge transferred">↪ 양도${trans.transferTo ? ' · ' + trans.transferTo : ''}</span>` : '';
+      const badge = (isBooked ? '<span class="cal-session-badge booked">✓ 확정</span>'
+        : isDone ? '<span class="cal-session-badge done">✅</span>' : '') + transBadge;
       const castStr = ROLES.map(r => s[r.key]).filter(Boolean).join(' · ');
       const btn = recs.length === 0
         ? `<button class="cal-session-add" onclick="openAddRecordFromSchedule('${ds}','${s.time}','${JSON.stringify(s).replace(/"/g,'&quot;')}')">+ 기록</button>`
